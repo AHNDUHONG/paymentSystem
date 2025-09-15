@@ -7,6 +7,7 @@ import com.tbc.tbc.payments.adapter.in.web.dto.CreatePaymentResponse;
 import com.tbc.tbc.payments.adapter.out.client.dto.TossConfirmReq;
 import com.tbc.tbc.payments.adapter.out.client.dto.TossPaymentRes;
 import com.tbc.tbc.payments.application.port.in.PaymentUseCase;
+import com.tbc.tbc.payments.application.port.in.WalletUseCase;
 import com.tbc.tbc.payments.application.port.out.PaymentPersistencePort;
 import com.tbc.tbc.payments.application.port.out.TossClientPort;
 import com.tbc.tbc.payments.application.port.out.WalletLedgerPersistencePort;
@@ -28,7 +29,7 @@ public class PaymentService implements PaymentUseCase {
     private final PaymentPersistencePort paymentRepository;
     private final WalletPersistencePort walletRepository;
     private final WalletLedgerPersistencePort ledgerRepository;
-    private final WalletService walletService; // (선택) 위 2단계를 쓸 경우 주입
+    private final WalletUseCase walletUseCase; // (선택) 위 2단계를 쓸 경우 주입
 
     /**
      * 결제 INIT: orderId 예약 + 사용자의 지갑 보장(없으면 생성)
@@ -40,7 +41,7 @@ public class PaymentService implements PaymentUseCase {
         });
 
         // 지갑 보장 (없으면 balance=0으로 생성)
-        walletService.getOrCreate(req.userId());
+        walletUseCase.getOrCreate(req.userId());
 
         Payment p = Payment.builder()
                 .orderId(req.orderId())
