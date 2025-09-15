@@ -2,7 +2,7 @@ package com.tbc.tbc.payments.application.service;
 
 import com.tbc.tbc.payments.domain.webhook.WebhookEvent;
 import com.tbc.tbc.payments.domain.webhook.WebhookStatus;
-import com.tbc.tbc.payments.adapter.out.persistence.WebhookEventRepository;
+import com.tbc.tbc.payments.application.port.out.WebhookEventPersistencePort;
 import com.tbc.tbc.payments.application.service.PaymentWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class WebhookRetryService {
 
-    private final WebhookEventRepository eventRepo;
+    private final WebhookEventPersistencePort eventRepo;
     private final PaymentWebhookService webhookService;
 
     @Transactional

@@ -9,10 +9,10 @@ import com.tbc.tbc.payments.domain.webhook.WebhookStatus;
 import com.tbc.tbc.payments.domain.wallet.LedgerType;
 import com.tbc.tbc.payments.domain.wallet.Wallet;
 import com.tbc.tbc.payments.domain.wallet.WalletLedger;
-import com.tbc.tbc.payments.adapter.out.persistence.PaymentRepository;
-import com.tbc.tbc.payments.adapter.out.persistence.WebhookEventRepository;
-import com.tbc.tbc.payments.adapter.out.persistence.WalletLedgerRepository;
-import com.tbc.tbc.payments.adapter.out.persistence.WalletRepository;
+import com.tbc.tbc.payments.application.port.out.PaymentPersistencePort;
+import com.tbc.tbc.payments.application.port.out.WebhookEventPersistencePort;
+import com.tbc.tbc.payments.application.port.out.WalletLedgerPersistencePort;
+import com.tbc.tbc.payments.application.port.out.WalletPersistencePort;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,10 +26,10 @@ import java.time.LocalDateTime;
 public class PaymentWebhookService {
 
     private final ObjectMapper objectMapper;
-    private final WebhookEventRepository eventRepo;
-    private final PaymentRepository paymentRepo;
-    private final WalletRepository walletRepo;
-    private final WalletLedgerRepository ledgerRepo;
+    private final WebhookEventPersistencePort eventRepo;
+    private final PaymentPersistencePort paymentRepo;
+    private final WalletPersistencePort walletRepo;
+    private final WalletLedgerPersistencePort ledgerRepo;
 
     /** 1) 수신 저장 (멱등: eventId로 중복 방지) */
     @Transactional
@@ -123,7 +123,7 @@ public class PaymentWebhookService {
             if (payment.getState() == PaymentState.INIT && payment.getState().canTransitTo(PaymentState.PAID)) {
                 payment.setState(PaymentState.PAID);
                 if (paymentKey != null) payment.setPaymentKey(paymentKey);
-                paymentRepo.save(payment);
+                paymentRepo.savePayment(payment);
 
                 Wallet wallet = walletRepo.findByUserIdForUpdate(payment.getUserId())
                         .orElseThrow(() -> new IllegalStateException("WALLET_NOT_FOUND"));
@@ -139,17 +139,17 @@ public class PaymentWebhookService {
                             .refId(orderId)
                             .idempotencyKey(idemKey)
                             .build();
-                    ledgerRepo.save(ledger);
+                    ledgerRepo.saveLedger(ledger);
 
                     wallet.setBalance(wallet.getBalance() + payment.getAmount());
-                    walletRepo.save(wallet);
+                    walletRepo.saveWallet(wallet);
                 }
             }
         } else if ("CANCELED".equalsIgnoreCase(status)) {
             // PAID → REFUNDED 전이 + 잔액 차감(멱등)
             if (payment.getState() == PaymentState.PAID && payment.getState().canTransitTo(PaymentState.REFUNDED)) {
                 payment.setState(PaymentState.REFUNDED);
-                paymentRepo.save(payment);
+                paymentRepo.savePayment(payment);
 
                 Wallet wallet = walletRepo.findByUserIdForUpdate(payment.getUserId())
                         .orElseThrow(() -> new IllegalStateException("WALLET_NOT_FOUND"));
@@ -165,10 +165,10 @@ public class PaymentWebhookService {
                             .refId(orderId)
                             .idempotencyKey(idemKey)
                             .build();
-                    ledgerRepo.save(ledger);
+                    ledgerRepo.saveLedger(ledger);
 
                     wallet.setBalance(wallet.getBalance() - payment.getAmount());
-                    walletRepo.save(wallet);
+                    walletRepo.saveWallet(wallet);
                 }
             }
         }

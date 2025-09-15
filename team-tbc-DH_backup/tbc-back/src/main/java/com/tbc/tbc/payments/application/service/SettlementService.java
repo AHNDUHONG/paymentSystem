@@ -2,7 +2,8 @@ package com.tbc.tbc.payments.application.service;
 
 import com.tbc.tbc.payments.adapter.in.web.dto.SettlementRequest;
 import com.tbc.tbc.payments.adapter.in.web.dto.SettlementResponse;
-import com.tbc.tbc.payments.adapter.out.persistence.*;
+import com.tbc.tbc.payments.application.port.out.WalletLedgerPersistencePort;
+import com.tbc.tbc.payments.application.port.out.WalletPersistencePort;
 import com.tbc.tbc.payments.domain.wallet.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SettlementService {
 
-    private final WalletRepository walletRepo;
-    private final WalletLedgerRepository ledgerRepo;
+    private final WalletPersistencePort walletRepo;
+    private final WalletLedgerPersistencePort ledgerRepo;
 
     private static final Long PLATFORM_USER_ID = 0L; // 플랫폼 전용 wallet
 
@@ -45,10 +46,10 @@ public class SettlementService {
                     .refId(String.valueOf(req.meetingId()))
                     .idempotencyKey(idemKeyPlatform)
                     .build();
-            ledgerRepo.save(debit);
+            ledgerRepo.saveLedger(debit);
 
             platform.setBalance(platform.getBalance() - req.totalAmount());
-            walletRepo.save(platform);
+            walletRepo.saveWallet(platform);
         }
 
         if (ledgerRepo.findByIdempotencyKey(idemKeyHost).isEmpty()) {
@@ -61,10 +62,10 @@ public class SettlementService {
                     .refId(String.valueOf(req.meetingId()))
                     .idempotencyKey(idemKeyHost)
                     .build();
-            ledgerRepo.save(credit);
+            ledgerRepo.saveLedger(credit);
 
             host.setBalance(host.getBalance() + req.totalAmount());
-            walletRepo.save(host);
+            walletRepo.saveWallet(host);
         }
 
         return new SettlementResponse(

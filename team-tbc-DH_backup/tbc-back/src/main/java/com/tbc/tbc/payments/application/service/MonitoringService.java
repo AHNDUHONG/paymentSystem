@@ -2,8 +2,8 @@ package com.tbc.tbc.payments.application.service;
 
 
 import com.tbc.tbc.payments.domain.wallet.Wallet;
-import com.tbc.tbc.payments.adapter.out.persistence.WalletLedgerRepository;
-import com.tbc.tbc.payments.adapter.out.persistence.WalletRepository;
+import com.tbc.tbc.payments.application.port.out.WalletLedgerPersistencePort;
+import com.tbc.tbc.payments.application.port.out.WalletPersistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +14,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MonitoringService {
 
-    private final WalletRepository walletRepo;
-    private final WalletLedgerRepository ledgerRepo;
+    private final WalletPersistencePort walletRepo;
+    private final WalletLedgerPersistencePort ledgerRepo;
 
     /**
      * 모든 wallet 의 balance 와 ledger 합계가 일치하는지 검증
