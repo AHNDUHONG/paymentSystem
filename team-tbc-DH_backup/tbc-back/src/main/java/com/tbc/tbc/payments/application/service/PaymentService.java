@@ -32,27 +32,38 @@ public class PaymentService implements PaymentUseCase {
     private final WalletUseCase walletUseCase; // (선택) 위 2단계를 쓸 경우 주입
 
     /**
-     * 결제 INIT: orderId 예약 + 사용자의 지갑 보장(없으면 생성)
+     * 결제 INIT: orderId 예약 + 사용자의 지갑 보장(없으면 생성) + 이미 존재하는 orderId면 그대로 리턴 (멱등 처리)
      */
     @Transactional
     public CreatePaymentResponse createInit(CreatePaymentRequest req) {
-        paymentRepository.findByOrderId(req.orderId()).ifPresent(p -> {
-            throw new IllegalStateException("DUPLICATE_ORDER_ID");
-        });
+        // 기존: 중복 orderId가 있으면 예외 던짐
+        // paymentRepository.findByOrderId(req.orderId()).ifPresent(p -> {
+        //     throw new IllegalStateException("DUPLICATE_ORDER_ID");
+        // });
 
-        // 지갑 보장 (없으면 balance=0으로 생성)
-        walletUseCase.getOrCreate(req.userId());
+        // 수정: 이미 존재하는 orderId면 그대로 리턴 (멱등 처리)
+        return paymentRepository.findByOrderId(req.orderId())
+                .map(p -> {
+                    log.debug("INIT already exists orderId={}, userId={}, amount={}",
+                            p.getOrderId(), p.getUserId(), p.getAmount());
+                    return new CreatePaymentResponse(p.getOrderId());
+                })
+                .orElseGet(() -> {
+                    // 지갑 보장 (없으면 balance=0으로 생성)
+                    walletUseCase.getOrCreate(req.userId());
 
-        Payment p = Payment.builder()
-                .orderId(req.orderId())
-                .userId(req.userId())
-                .amount(req.amount())
-                .state(PaymentState.INIT)
-                .build();
+                    Payment p = Payment.builder()
+                            .orderId(req.orderId())
+                            .userId(req.userId())
+                            .amount(req.amount())
+                            .state(PaymentState.INIT)
+                            .build();
 
-        paymentRepository.savePayment(p);
-        log.debug("INIT saved orderId={}, userId={}, amount={}", p.getOrderId(), p.getUserId(), p.getAmount());
-        return new CreatePaymentResponse(p.getOrderId());
+                    paymentRepository.savePayment(p);
+                    log.debug("INIT saved orderId={}, userId={}, amount={}",
+                            p.getOrderId(), p.getUserId(), p.getAmount());
+                    return new CreatePaymentResponse(p.getOrderId());
+                });
     }
 
     /**
