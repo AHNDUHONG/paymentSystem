@@ -6,33 +6,28 @@ import com.tbc.tbc.payments.adapter.in.web.dto.CreatePaymentRequest;
 import com.tbc.tbc.payments.adapter.in.web.dto.CreatePaymentResponse;
 import com.tbc.tbc.payments.adapter.out.client.dto.TossConfirmReq;
 import com.tbc.tbc.payments.adapter.out.client.dto.TossPaymentRes;
-import com.tbc.tbc.payments.adapter.out.persistence.PaymentRepository;
-import com.tbc.tbc.payments.adapter.out.persistence.WalletLedgerRepository;
-import com.tbc.tbc.payments.adapter.out.persistence.WalletRepository;
+import com.tbc.tbc.payments.application.port.in.PaymentUseCase;
+import com.tbc.tbc.payments.application.port.out.PaymentPersistencePort;
+import com.tbc.tbc.payments.application.port.out.TossClientPort;
+import com.tbc.tbc.payments.application.port.out.WalletLedgerPersistencePort;
+import com.tbc.tbc.payments.application.port.out.WalletPersistencePort;
 import com.tbc.tbc.payments.domain.payment.*;
 import com.tbc.tbc.payments.domain.wallet.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentService {
+public class PaymentService implements PaymentUseCase {
 
-    private final RestClient tossRestClient;
-    private final PaymentRepository paymentRepository;
-    private final WalletRepository walletRepository;
-    private final WalletLedgerRepository ledgerRepository;
+    private final TossClientPort tossClientPort;
+    private final PaymentPersistencePort paymentRepository;
+    private final WalletPersistencePort walletRepository;
+    private final WalletLedgerPersistencePort ledgerRepository;
     private final WalletService walletService; // (선택) 위 2단계를 쓸 경우 주입
 
     /**
@@ -54,7 +49,7 @@ public class PaymentService {
                 .state(PaymentState.INIT)
                 .build();
 
-        paymentRepository.save(p);
+        paymentRepository.savePayment(p);
         log.debug("INIT saved orderId={}, userId={}, amount={}", p.getOrderId(), p.getUserId(), p.getAmount());
         return new CreatePaymentResponse(p.getOrderId());
     }
@@ -80,20 +75,8 @@ public class PaymentService {
                     payment.getAmount(), w.getBalance());
         }
 
-        // 2) Toss Confirm 호출 (실패시 상세 바디 포함하여 예외)
-        TossPaymentRes res = tossRestClient.post()
-                .uri("/v1/payments/confirm")
-                .body(new TossConfirmReq(req.paymentKey(), req.orderId(), req.amount()))
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, (reqSpec, resp) -> {
-                    try (var reader = new BufferedReader(new InputStreamReader(resp.getBody(), StandardCharsets.UTF_8))) {
-                        String body = reader.lines().collect(java.util.stream.Collectors.joining("\n"));
-                        throw new IllegalStateException("TOSS_CONFIRM_FAILED: " + body);
-                    } catch (IOException e) {
-                        throw new IllegalStateException("TOSS_CONFIRM_FAILED (no body)", e);
-                    }
-                })
-                .body(TossPaymentRes.class);
+        // 2) Toss Confirm 호출
+        TossPaymentRes res = tossClientPort.confirm(new TossConfirmReq(req.paymentKey(), req.orderId(), req.amount()));
 
         if (res == null || res.status() == null) {
             throw new IllegalStateException("INVALID_TOSS_RESPONSE");
@@ -109,7 +92,7 @@ public class PaymentService {
         }
         payment.setPaymentKey(res.paymentKey());
         payment.setState(PaymentState.PAID);
-        paymentRepository.save(payment);
+        paymentRepository.savePayment(payment);
         log.debug("PAYMENT PAID orderId={}, paymentKey={}", payment.getOrderId(), payment.getPaymentKey());
 
         // 4) 지갑 잠금 후 CREDIT + 원장 기록 (멱등)
@@ -129,7 +112,7 @@ public class PaymentService {
                     .idempotencyKey(idemKey)
                     .build(); // created_at/updated_at은 Auditing이 자동 세팅
 
-            ledgerRepository.save(ledger);
+            ledgerRepository.saveLedger(ledger);
 
             wallet.setBalance(wallet.getBalance() + payment.getAmount());
             // updated_at도 Auditing이 자동 갱신됨 (수동 set 필요X)
@@ -139,6 +122,7 @@ public class PaymentService {
             log.warn("Idempotent ledger hit for orderId={}, key={}", payment.getOrderId(), idemKey);
         }
 
+        walletRepository.saveWallet(wallet);
         return new ConfirmResponse(payment.getOrderId(), payment.getState().name(),
                 payment.getAmount(), wallet.getBalance());
     }
