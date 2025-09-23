@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.mockito.Mock;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +44,7 @@ class PaymentServiceIntegrationTest {
     @Autowired
     private WalletLedgerRepository walletLedgerRepository;
 
-    @Mock
+    @MockBean
     private TossClientPort tossClientPort;
 
     @BeforeEach
@@ -54,6 +54,7 @@ class PaymentServiceIntegrationTest {
         walletRepository.deleteAll();
     }
 
+    // 동일 orderId 결제 시 기존 엔티티 재사용 멱등 처리 및 지갑 테스트
     @Test
     void createInitSameOrderIdReturnsExistingPayment() {
         String orderId = "ORDER-" + UUID.randomUUID();
@@ -68,6 +69,8 @@ class PaymentServiceIntegrationTest {
         assertThat(walletRepository.findByUserId(1L)).isPresent();
     }
 
+
+    // 결제
     @Test
     void confirmTwiceCreditsWalletOnlyOnce() {
         Long userId = 2L;
