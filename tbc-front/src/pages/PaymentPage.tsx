@@ -4,7 +4,7 @@ import PaymentButton from "../components/PaymentButton";
 import { generateOrderId } from "../utils/orderId";
 
 export default function PaymentPage() {
-    const userId = 1; // 로그인한 유저 ID (예시)
+    const userId = 3; // 로그인한 유저 ID (예시)
     const [orderId, setOrderId] = useState(() => generateOrderId(userId));
     const amount = 15000;
     const orderName = "포인트 충전";

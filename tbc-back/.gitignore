@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+/tbc-back/src/main/resources/application.properties
+/tbc-back/uploads/profile

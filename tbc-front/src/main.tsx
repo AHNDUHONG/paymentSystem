@@ -28,8 +28,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="profile/edit" element={<ProfileEditPage />} />
           <Route path="payments/history" element={<PaymentHistoryPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="payments/success" element={<Success />} />
-          <Route path="payments/fail" element={<Fail />} />
+          <Route path="/success" element={<Success />} />
+          <Route path="/fail" element={<Fail />} />
           <Route path="monitoring" element={<MonitoringUi />} />
         </Route>
       </Routes>
