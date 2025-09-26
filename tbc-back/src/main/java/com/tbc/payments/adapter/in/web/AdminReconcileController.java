@@ -16,5 +16,10 @@ public class AdminReconcileController {
     public ResponseEntity<String> reconcileWallets() {
         return ResponseEntity.ok(reconcileService.reconcileAll());
     }
+
+    @PostMapping("/wallets/fix")
+    public ResponseEntity<String> reconcileWalletsAndFix() {
+        return ResponseEntity.ok(reconcileService.reconcileAllAndFix());
+    }
 }
 

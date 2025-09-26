@@ -3,6 +3,7 @@ package com.tbc.payments.adapter.in.web;
 import com.tbc.payments.adapter.in.web.dto.*;
 import com.tbc.payments.application.port.in.PaymentsFacade;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,5 +23,11 @@ public class PaymentController {
     @PostMapping("/confirm")
     public ConfirmResponse confirm(@RequestBody ConfirmRequest req) {
         return paymentsFacade.confirm(req);
+    }
+
+    // INIT 상태 취소
+    @DeleteMapping("/{orderId}")
+    public CancelPaymentResponse cancelInit(@PathVariable String orderId) {
+        return paymentsFacade.cancelInit(orderId);
     }
 }

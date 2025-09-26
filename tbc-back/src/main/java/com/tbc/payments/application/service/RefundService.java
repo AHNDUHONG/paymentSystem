@@ -22,53 +22,51 @@ import org.springframework.stereotype.Service;
 public class RefundService implements RefundUseCase {
 
     private final TossClientPort tossClientPort;
-    private final PaymentPersistencePort paymentRepo;
-    private final WalletPersistencePort walletRepo;
-    private final WalletLedgerPersistencePort ledgerRepo;
+    private final PaymentPersistencePort paymentRepository;
+    private final WalletPersistencePort walletRepository;
+    private final WalletLedgerPersistencePort ledgerRepository;
 
     @Transactional
     public RefundResponse refund(RefundRequest req) {
-        Payment payment = paymentRepo.findByOrderId(req.orderId())
+        Payment payment = paymentRepository.findByOrderId(req.orderId())
                 .orElseThrow(() -> new IllegalStateException("ORDER_NOT_FOUND"));
 
-        if (!payment.getState().canTransitTo(PaymentState.REFUND_REQUESTED)) {
-            throw new IllegalStateException("INVALID_STATE");
+        if (payment.getState() != PaymentState.PAID
+                && payment.getState() != PaymentState.PARTIALLY_REFUNDED) {
+            throw new IllegalStateException("ONLY_PAID_OR_PARTIALLY_REFUNDED_CAN_BE_REFUNDED");
         }
-
-        // 상태 전이: PAID -> REFUND_REQUESTED
-        payment.setState(PaymentState.REFUND_REQUESTED);
-        paymentRepo.savePayment(payment);
 
         // 토스 환불 API 호출
         tossClientPort.cancel(payment.getPaymentKey(), new TossCancelReq(req.refundAmount(), req.reason()));
 
-        // 상태 전이: REFUND_REQUESTED -> REFUNDED
-        if (!payment.getState().canTransitTo(PaymentState.REFUNDED)) {
-            throw new IllegalStateException("INVALID_STATE_TRANSITION");
-        }
-        payment.setState(PaymentState.REFUNDED);
-        paymentRepo.savePayment(payment);
-
         // Wallet 업데이트 (DEBIT 처리)
-        Wallet wallet = walletRepo.findByUserIdForUpdate(payment.getUserId())
+        Wallet wallet = walletRepository.findByUserIdForUpdate(payment.getUserId())
                 .orElseThrow(() -> new IllegalStateException("WALLET_NOT_FOUND"));
 
-        String idemKey = "REFUND:" + payment.getOrderId();
-        if (ledgerRepo.findByIdempotencyKey(idemKey).isEmpty()) {
+        String idemKey = "REFUND:" + payment.getOrderId() + ":" + req.refundAmount() + ":" + req.reason();
+        if (ledgerRepository.findByIdempotencyKey(idemKey).isEmpty()) {
             WalletLedger ledger = WalletLedger.builder()
                     .walletId(wallet.getId())
                     .type(LedgerType.DEBIT)
                     .amount(req.refundAmount())
-                    .reason("REFUND")
+                    .reason("REFUND_PARTIAL")
                     .refType("PAYMENT")
                     .refId(payment.getOrderId())
                     .idempotencyKey(idemKey)
                     .build();
-            ledgerRepo.saveLedger(ledger);
+            ledgerRepository.saveLedger(ledger);
 
             wallet.setBalance(wallet.getBalance() - req.refundAmount());
-            walletRepo.saveWallet(wallet);
+            walletRepository.saveWallet(wallet);
         }
+
+        // 상태 관리: 단일 refundAmount 기준
+        if (req.refundAmount() < payment.getAmount()) {
+            payment.setState(PaymentState.PARTIALLY_REFUNDED);
+        } else {
+            payment.setState(PaymentState.REFUNDED);           // 전체 환불
+        }
+        paymentRepository.savePayment(payment);
 
         return new RefundResponse(
                 payment.getOrderId(),

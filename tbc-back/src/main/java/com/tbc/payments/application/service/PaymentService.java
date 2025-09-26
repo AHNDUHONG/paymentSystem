@@ -8,10 +8,7 @@ import com.tbc.payments.adapter.out.client.dto.TossConfirmReq;
 import com.tbc.payments.adapter.out.client.dto.TossPaymentRes;
 import com.tbc.payments.application.port.in.PaymentUseCase;
 import com.tbc.payments.application.port.in.WalletUseCase;
-import com.tbc.payments.application.port.out.PaymentPersistencePort;
-import com.tbc.payments.application.port.out.TossClientPort;
-import com.tbc.payments.application.port.out.WalletLedgerPersistencePort;
-import com.tbc.payments.application.port.out.WalletPersistencePort;
+import com.tbc.payments.application.port.out.*;
 import com.tbc.payments.domain.payment.*;
 import com.tbc.payments.domain.wallet.*;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +26,8 @@ public class PaymentService implements PaymentUseCase {
     private final PaymentPersistencePort paymentRepository;
     private final WalletPersistencePort walletRepository;
     private final WalletLedgerPersistencePort ledgerRepository;
-    private final WalletUseCase walletUseCase; // (선택) 위 2단계를 쓸 경우 주입
+    private final WalletUseCase walletUseCase;
+    private final MeetupPointPort meetupPointPort;
 
     /**
      * 결제 INIT: orderId 예약 + 사용자의 지갑 보장(없으면 생성) + 이미 존재하는 orderId면 그대로 리턴 (멱등 처리)
@@ -64,6 +62,21 @@ public class PaymentService implements PaymentUseCase {
                             p.getOrderId(), p.getUserId(), p.getAmount());
                     return new CreatePaymentResponse(p.getOrderId());
                 });
+    }
+
+    // INIT 상태 결제 취소
+    @Transactional
+    @Override
+    public Payment cancelInit(String orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_NOT_FOUND"));
+
+        if (payment.getState() != PaymentState.INIT) {
+            throw new IllegalStateException("ONLY_INIT_CAN_BE_CANCELLED");
+        }
+
+        payment.setState(PaymentState.CANCELED);
+        return paymentRepository.savePayment(payment);
     }
 
     /**
@@ -132,6 +145,18 @@ public class PaymentService implements PaymentUseCase {
         } catch (DataIntegrityViolationException dup) {
             // 멱등키 UNIQUE 충돌 → 이미 크레딧된 상태로 간주하고 현재 잔액만 반환
             log.warn("Idempotent ledger hit for orderId={}, key={}", payment.getOrderId(), idemKey);
+        }
+
+        // confirm 직후 참가비 DEBIT
+        if (Boolean.TRUE.equals(req.autoDeduct()) && req.meetupId() != null) {
+            String externalRef = "PAYMENT_CONFIRM_JOIN:" + payment.getOrderId();
+            meetupPointPort.deductForMeetup(
+                    payment.getUserId(),
+                    req.meetupId(),
+                    payment.getAmount(),
+                    externalRef,
+                    "MEETUP_JOIN_AFTER_PAYMENT" // 사유
+            );
         }
 
         walletRepository.saveWallet(wallet);
