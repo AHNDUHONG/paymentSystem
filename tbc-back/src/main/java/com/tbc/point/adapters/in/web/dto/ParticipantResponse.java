@@ -1,10 +1,10 @@
 package com.tbc.point.adapters.in.web.dto;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 public record ParticipantResponse(
-        String userId,
+        Long userId,
         String role,
         String status,
-        Instant joinedAt
+        LocalDateTime joinedAt
 ) {}

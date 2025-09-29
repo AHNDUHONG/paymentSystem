@@ -33,6 +33,13 @@ public class GroupRepositoryAdapter implements GroupRepository {
                 .tagsCsv(String.join(",", g.tags()))
                 .contentHtml(g.contentHtml())
                 .hostId(g.hostId())
+                .location(g.location())
+                .eventDate(g.eventDate())
+                .eventTime(g.eventTime())
+                .capacity(g.capacity()) // Added this field
+                .joined(g.joined())     // Added this field
+                .coverUrl(g.coverUrl()) // Added cover_url field
+                .startAt(g.startAt())   // Added start_at field
                 .build();
         return repo.save(e).getId();
     }
@@ -46,7 +53,9 @@ public class GroupRepositoryAdapter implements GroupRepository {
                 com.tbc.group.domain.model.Group.FeeType.valueOf(e.getFeeType()),
                 e.getFeeAmount(), e.getFeeInfo(),
                 e.getTagsCsv() == null ? List.of() : Arrays.asList(e.getTagsCsv().split(",")),
-                e.getContentHtml(), e.getHostId()
+                e.getContentHtml(), e.getHostId(),
+                e.getLocation(), e.getEventDate(), e.getEventTime(),
+                e.getCapacity(), e.getJoined(), e.getCoverUrl(), e.getStartAt() // Added these fields
         ));
     }
 
@@ -59,7 +68,9 @@ public class GroupRepositoryAdapter implements GroupRepository {
                 com.tbc.group.domain.model.Group.FeeType.valueOf(e.getFeeType()),
                 e.getFeeAmount(), e.getFeeInfo(),
                 e.getTagsCsv() == null ? List.of() : Arrays.asList(e.getTagsCsv().split(",")),
-                e.getContentHtml(), e.getHostId()
+                e.getContentHtml(), e.getHostId(),
+                e.getLocation(), e.getEventDate(), e.getEventTime(),
+                e.getCapacity(), e.getJoined(), e.getCoverUrl(), e.getStartAt() // Added these fields
         ));
     }
 
@@ -72,7 +83,24 @@ public class GroupRepositoryAdapter implements GroupRepository {
                 com.tbc.group.domain.model.Group.FeeType.valueOf(e.getFeeType()),
                 e.getFeeAmount(), e.getFeeInfo(),
                 e.getTagsCsv() == null ? List.of() : Arrays.asList(e.getTagsCsv().split(",")),
-                e.getContentHtml(), e.getHostId()
+                e.getContentHtml(), e.getHostId(),
+                e.getLocation(), e.getEventDate(), e.getEventTime(),
+                e.getCapacity(), e.getJoined(), e.getCoverUrl(), e.getStartAt() // Added these fields
+        ));
+    }
+
+    @Override
+    public Page<com.tbc.group.domain.model.Group> findByUserId(Long userId, Pageable pageable) {
+        return repo.findByUserId(userId, pageable).map(e -> new com.tbc.group.domain.model.Group(
+                e.getId(), e.getTitle(), e.getCategory(), e.getTopic(),
+                e.getMinParticipants(), e.getMaxParticipants(),
+                com.tbc.group.domain.model.Group.Mode.valueOf(e.getMode()),
+                com.tbc.group.domain.model.Group.FeeType.valueOf(e.getFeeType()),
+                e.getFeeAmount(), e.getFeeInfo(),
+                e.getTagsCsv() == null ? List.of() : Arrays.asList(e.getTagsCsv().split(",")),
+                e.getContentHtml(), e.getHostId(),
+                e.getLocation(), e.getEventDate(), e.getEventTime(),
+                e.getCapacity(), e.getJoined(), e.getCoverUrl(), e.getStartAt() // Added these fields
         ));
     }
 }

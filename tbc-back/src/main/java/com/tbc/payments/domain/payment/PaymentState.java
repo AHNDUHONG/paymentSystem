@@ -6,7 +6,7 @@ public enum PaymentState {
     public boolean canTransitTo(PaymentState next) {
         return switch (this) {
             case INIT -> next == PAID || next == FAILED || next == CANCELED;
-            case PAID -> next == REFUND_REQUESTED || next == REFUNDED || next == PARTIALLY_REFUNDED;;
+            case PAID -> next == REFUND_REQUESTED || next == REFUNDED || next == PARTIALLY_REFUNDED;
             case REFUND_REQUESTED -> next == REFUNDED;
             case PARTIALLY_REFUNDED -> next == REFUNDED || next == PARTIALLY_REFUNDED;
             default -> false;

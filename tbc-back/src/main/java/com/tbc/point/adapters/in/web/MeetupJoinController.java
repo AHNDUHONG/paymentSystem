@@ -4,7 +4,6 @@ import com.tbc.point.application.exception.InsufficientPointsException;
 import com.tbc.point.application.exception.AlreadyJoinedException;
 import com.tbc.point.application.facade.MeetupJoinFacade;
 import com.tbc.point.adapters.in.web.dto.ParticipantResponse;
-import com.tbc.point.adapters.out.persistence.jpa.SpringDataMeetupJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -12,12 +11,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/meetups-legacy")
+@RequestMapping("/api/meetups")
 @RequiredArgsConstructor
 public class MeetupJoinController {
 
     private final MeetupJoinFacade facade;
-    private final SpringDataMeetupJpaRepository meetupRepo;
 
     // 참가하기
     @PostMapping("/{meetupId}/join")
@@ -31,7 +29,7 @@ public class MeetupJoinController {
     @GetMapping("/{meetupId}/participants")
     public List<ParticipantResponse> participants(@PathVariable Long meetupId,  // String → Long
                                                   @RequestParam(defaultValue = "true") boolean excludeCancelled) {
-        return facade.listParticipants(meetupId, excludeCancelled);
+        return facade.listMembers(meetupId, excludeCancelled);
     }
 
     // 예외 핸들러들
@@ -43,6 +41,18 @@ public class MeetupJoinController {
     @ExceptionHandler(AlreadyJoinedException.class)
     public ResponseEntity<String> handleAlreadyJoined(AlreadyJoinedException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body("ALREADY_JOINED");
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleState(IllegalStateException e) {
+        String msg = e.getMessage();
+        if ("MEETUP_NOT_OPEN".equals(msg)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("MEETUP_NOT_OPEN");
+        }
+        if ("MEETUP_FULL".equals(msg)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("MEETUP_FULL");
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(msg);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

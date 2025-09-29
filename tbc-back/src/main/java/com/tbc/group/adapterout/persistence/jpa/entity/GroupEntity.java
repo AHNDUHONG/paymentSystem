@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -28,6 +30,13 @@ public class GroupEntity {
     @Lob String tagsCsv;          // 간단하게 CSV 저장(필요 시 별도 테이블로 확장)
     @Lob String contentHtml;
     @Column(nullable=false) Long hostId;
+    @Column(length=200) String location;
+    @Column LocalDate eventDate;
+    @Column LocalTime eventTime;
+    @Column(nullable=false) int capacity; // Added this field
+    @Column(nullable=false) int joined;   // Added this field
+    @Column(length=500) String coverUrl;   // Added cover_url field
+    @Column(nullable=false) LocalDateTime startAt; // Added start_at field
     @CreationTimestamp @Column(nullable=false, updatable=false) LocalDateTime createdAt;
     @UpdateTimestamp   @Column(nullable=false) LocalDateTime updatedAt;
 }

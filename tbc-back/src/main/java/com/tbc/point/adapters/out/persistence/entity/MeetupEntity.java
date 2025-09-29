@@ -2,61 +2,79 @@ package com.tbc.point.adapters.out.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.time.Instant;
-import java.util.List;
-import java.util.ArrayList;
 
+import java.time.LocalDateTime;
+
+/** meetups 테이블 읽기용 최소 매핑 (이벤트 정보와 충돌 방지: 테이블 이름 다름) */
 @Entity
 @Table(name = "meetups")
-@Getter @Setter
+@Getter
+@Setter
+@NoArgsConstructor
 public class MeetupEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // bigint auto_increment
-    @Column(name = "id")
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "host_id", nullable = false)
     private Long hostId;
 
-    @Column(name = "title", nullable = false)
+    @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(name = "description")
-    private String description;
+    @Column(nullable = false, length = 120)
+    private String topic;
 
-    @Column(name = "start_at")
-    private Instant startAt;
+    @Column(nullable = false, length = 50)
+    private String category;
 
-    @Column(name = "end_at")
-    private Instant endAt;
+    @Column(name = "fee_amount")
+    private Integer feeAmount;
 
-    @Column(name = "location")
+    @Column(name = "fee_type", length = 8)
+    private String feeType;
+
+    @Column(nullable = false)
+    private Integer capacity;
+
+    @Column(name = "max_participants")
+    private Integer maxParticipants;
+
+    @Column(name = "min_participants")
+    private Integer minParticipants;
+
+    @Column(nullable = false)
+    private Integer joined;
+
+    @Column(nullable = false, length = 16)
+    private String status;
+
+    @Column(nullable = false, length = 16)
+    private String mode;
+
+    @Column(nullable = false, length = 200)
     private String location;
 
-    @Column(name = "is_location_public")
-    private Boolean isLocationPublic;
+    @Column(name = "cover_url")
+    private String coverUrl;
 
-    @Column(name = "capacity_max", nullable = false)
-    private int capacityMax;
+    @Lob
+    private String description;
 
-    @Column(name = "price_points", nullable = false)
-    private int pricePoints;
+    @Lob @Column(name = "fee_info")
+    private String feeInfo;
 
-    @Column(name = "platform_fee_rate", precision = 5, scale = 2, nullable = false)
-    private java.math.BigDecimal platformFeeRate;
+    @Lob @Column(name = "tags_csv")
+    private String tagsCsv;
 
-    @Column(name = "status", nullable = false)
-    private String status; // Enum 대신 String (예: OPEN, FINISHED 등)
+    @Lob @Column(name = "content_html")
+    private String contentHtml;
 
-    @Column(name = "created_at")
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private Instant updatedAt;
-
-    // 참가자 목록 연관관계
-    @OneToMany(mappedBy = "meetup", fetch = FetchType.LAZY)
-    private List<MeetupParticipantEntity> participants = new ArrayList<>();
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }
